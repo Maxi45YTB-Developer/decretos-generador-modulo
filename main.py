@@ -85,6 +85,106 @@ class IsapreDialog(tk.Toplevel):
 
 
 # ---------------------------------------------------
+# Diálogo para N° de Resolución ISAPRE
+# ---------------------------------------------------
+class ResolucionDialog(tk.Toplevel):
+    """
+    Diálogo personalizado para ingresar el N° de Resolución de ISAPRE.
+    
+    Reemplaza el simpledialog.askstring() original para proporcionar:
+    - Una interfaz más clara y profesional
+    - Información contextual sobre la licencia
+    - Validación mejorada del formato de entrada
+    - Mejor experiencia de usuario con atajos de teclado
+    - Texto de ayuda para el usuario
+    """
+    def __init__(self, parent, licencia, isapre):
+        super().__init__(parent)
+        self.title("N° de Resolución (ISAPRE)")
+        self.geometry("450x280")
+        self.resizable(False, False)
+        self.resultado = None
+        
+        # Información de la licencia
+        try:
+            id_lic = str(int(float(licencia["id"])))
+        except:
+            id_lic = str(licencia["id"])
+        
+        # Título principal
+        titulo_frame = ttk.Frame(self)
+        titulo_frame.pack(fill="x", padx=20, pady=(15, 10))
+        
+        ttk.Label(titulo_frame, text="Ingreso de N° de Resolución", 
+                 font=("Arial", 12, "bold")).pack()
+        
+        # Marco de información de la licencia
+        info_frame = ttk.LabelFrame(self, text="Datos de la Licencia", padding="10")
+        info_frame.pack(fill="x", padx=20, pady=(0, 10))
+        
+        ttk.Label(info_frame, text=f"Licencia N°: {id_lic}", 
+                 font=("Arial", 10, "bold")).pack(anchor="w")
+        ttk.Label(info_frame, text=f"Titular: {licencia.get('nombre_titular', '')}").pack(anchor="w")
+        ttk.Label(info_frame, text=f"ISAPRE: {isapre}").pack(anchor="w")
+        
+        # Campo de entrada
+        entrada_frame = ttk.Frame(self)
+        entrada_frame.pack(fill="x", padx=20, pady=(0, 10))
+        
+        ttk.Label(entrada_frame, text=f"N° de Resolución {isapre}:", 
+                 font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        
+        self.var_resolucion = tk.StringVar()
+        self.entry_resolucion = ttk.Entry(entrada_frame, textvariable=self.var_resolucion, 
+                                         font=("Arial", 11))
+        self.entry_resolucion.pack(fill="x", pady=(0, 5))
+        self.entry_resolucion.focus_set()
+        
+        # Texto de ayuda
+        ttk.Label(entrada_frame, text="Ingrese el número de resolución correspondiente a esta licencia médica.", 
+                 font=("Arial", 9), foreground="gray").pack(anchor="w")
+        
+        # Botones
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(pady=15)
+        
+        ttk.Button(btn_frame, text="Aceptar", command=self.on_ok).pack(side="left", padx=10)
+        ttk.Button(btn_frame, text="Cancelar", command=self.on_cancel).pack(side="left", padx=10)
+        
+        # Configuración de la ventana
+        self.transient(parent)
+        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
+        
+        # Permitir que Enter acepte y Escape cancele
+        self.bind('<Return>', lambda e: self.on_ok())
+        self.bind('<Escape>', lambda e: self.on_cancel())
+        
+        self.wait_window()
+    
+    def on_ok(self):
+        resolucion = self.var_resolucion.get().strip()
+        if not resolucion:
+            messagebox.showerror("Error", "El N° de Resolución es obligatorio.", parent=self)
+            self.entry_resolucion.focus_set()
+            return
+        
+        # Validación básica de formato (solo números y letras, guiones)
+        if not all(c.isalnum() or c in '-_/' for c in resolucion):
+            messagebox.showwarning("Advertencia", 
+                                 "El N° de Resolución contiene caracteres no válidos.\n"
+                                 "Se recomienda usar solo números, letras y guiones.", 
+                                 parent=self)
+        
+        self.resultado = resolucion
+        self.destroy()
+    
+    def on_cancel(self):
+        self.resultado = None
+        self.destroy()
+
+
+# ---------------------------------------------------
 # Diálogos para Datos Extra y Subrogancia
 # ---------------------------------------------------
 class DatosExtraDialog(tk.Toplevel):
@@ -552,11 +652,12 @@ def on_generar_click():
                     id_lic = str(int(float(lic["id"])))
                 except:
                     id_lic = str(lic["id"])
-                prompt = f"Licencia Nº {id_lic} - {lic['nombre_titular']}:\nIngrese N° de Resolución {isapre_elegida}:"
-                res = simpledialog.askstring("N° de Resolución (ISAPRE)", prompt, parent=root)
+                # Usar el nuevo diálogo personalizado para mejor experiencia de usuario
+                dialog_resolucion = ResolucionDialog(root, lic, isapre_elegida)
+                res = dialog_resolucion.resultado
                 if res is None:
                     return
-                resoluciones[id_lic] = res.strip()
+                resoluciones[id_lic] = res
             datos_extra["resoluciones"] = resoluciones
 
         # Lanzamos hilo para Formato 5–8
